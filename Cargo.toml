@@ -5,6 +5,9 @@ edition = "2024"
 
 [dependencies]
 async-trait = "0.1.89"
+bytes = "1.9"
+clap = { version = "4.5", features = ["derive"] }
 http = "1.4.0"
 pingora = { version = "0.7.0", features = ["proxy"] }
 tokio = { version = "1.49.0", features = ["full"] }
+url = "2.5"
