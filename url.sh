@@ -1,0 +1,1 @@
+export URL="https://localhost:3000/mcp/"

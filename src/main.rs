@@ -25,6 +25,10 @@ struct Args {
     #[arg(long, default_value_t = false)]
     insecure: bool,
 
+    /// Path to TLS certificate file for HTTPS verification
+    #[arg(long)]
+    tls_cert: Option<String>,
+
     /// Duration in seconds to run the benchmark (0 = single request)
     #[arg(long, default_value_t = 0)]
     duration: u64,
@@ -139,9 +143,9 @@ async fn make_request(
     req.insert_header("Host", host)?;
     req.insert_header("User-Agent", "pingora-bench/0.1.0")?;
 
-    // Add Content-Length and Content-Type headers BEFORE custom headers if body is provided
+    // Add Content-Type header BEFORE custom headers if body is provided
+    // Note: For HTTP/2, Content-Length is often handled automatically
     if let Some(body) = body {
-        req.insert_header("Content-Length", body.len().to_string())?;
         req.insert_header("Content-Type", "application/json")?;
     }
 
@@ -231,22 +235,28 @@ async fn main() -> Result<()> {
     };
 
     // Define the Peer
-    // Force IPv4 resolution for localhost to avoid IPv6 connection issues
+    // Always use 127.0.0.1 for localhost to avoid IPv6 connection issues
+    // but keep original hostname for SNI in TLS handshake
     let peer_host = if host == "localhost" { "127.0.0.1" } else { host };
-    
-    // For insecure connections, use the resolved IP for SNI as well to avoid cert mismatch
-    let sni_name = if is_tls && args.insecure && host == "localhost" {
-        peer_host.to_string()
-    } else {
-        host.to_string()
-    };
-    
-    let mut peer = HttpPeer::new((peer_host, port), is_tls, sni_name);
+    let mut peer = HttpPeer::new((peer_host, port), is_tls, host.to_string());
     
     // Configure peer to skip certificate verification if insecure flag is set
     if is_tls && args.insecure {
         peer.options.verify_cert = false;
         peer.options.verify_hostname = false;
+    }
+    
+    // Configure peer to use custom certificate if provided
+    if is_tls && args.tls_cert.is_some() {
+        if let Some(cert_path) = &args.tls_cert {
+            peer.options.ca_file = Some(cert_path.clone());
+        }
+    }
+    
+    // Enable HTTP/2 via ALPN for TLS connections (server requires it)
+    // Note: This may have issues with self-signed certificates
+    if is_tls {
+        peer.options.alpn = pingora::protocols::ALPN::H2;
     }
 
     // Create a connector
