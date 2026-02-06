@@ -233,7 +233,15 @@ async fn main() -> Result<()> {
     // Define the Peer
     // Force IPv4 resolution for localhost to avoid IPv6 connection issues
     let peer_host = if host == "localhost" { "127.0.0.1" } else { host };
-    let mut peer = HttpPeer::new((peer_host, port), is_tls, host.to_string());
+    
+    // For insecure connections, use the resolved IP for SNI as well to avoid cert mismatch
+    let sni_name = if is_tls && args.insecure && host == "localhost" {
+        peer_host.to_string()
+    } else {
+        host.to_string()
+    };
+    
+    let mut peer = HttpPeer::new((peer_host, port), is_tls, sni_name);
     
     // Configure peer to skip certificate verification if insecure flag is set
     if is_tls && args.insecure {

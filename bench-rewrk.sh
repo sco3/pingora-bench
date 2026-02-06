@@ -2,6 +2,8 @@
 
 set -ueo pipefail
 
+source ./url.sh
+
 # Source token from token-from-file.sh
 TOKEN_FILE="$HOME/.local/mcpgateway-bearer-token.txt"
 if [ ! -f "$TOKEN_FILE" ]; then
@@ -16,4 +18,4 @@ rewrk -c 1 -t 1 -d 10s \
   -H "Authorization: $AUTH" \
   -H "Content-Type: application/json" \
   --body '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_system_time","arguments":{"timezone":"UTC"}}}' \
-  -h http://localhost:3000/mcp/
+  -h $URL
