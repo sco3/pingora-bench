@@ -15,7 +15,7 @@ AUTH="Bearer $(tr -d '\r\n' <"$TOKEN_FILE")"
   --url http://localhost:3000/mcp/ \
   --method POST \
   --duration 10 \
-  -n 1 \
+   \
   -H "Authorization: $AUTH" \
   -H "Content-Type: application/json" \
   --body '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_system_time","arguments":{"timezone":"UTC"}}}'

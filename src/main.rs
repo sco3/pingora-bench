@@ -139,7 +139,13 @@ async fn make_request(
     req.insert_header("Host", host)?;
     req.insert_header("User-Agent", "pingora-bench/0.1.0")?;
 
-    // Add custom headers
+    // Add Content-Length and Content-Type headers BEFORE custom headers if body is provided
+    if let Some(body) = body {
+        req.insert_header("Content-Length", body.len().to_string())?;
+        req.insert_header("Content-Type", "application/json")?;
+    }
+
+    // Add custom headers after standard headers
     for header in headers {
         if let Some((key, value)) = header.split_once(':') {
             let header_name = HeaderName::from_bytes(key.trim().as_bytes())
@@ -148,12 +154,6 @@ async fn make_request(
                 .map_err(|e| Error::because(ErrorType::InvalidHTTPHeader, "Invalid header value", e))?;
             req.headers.insert(header_name, header_value);
         }
-    }
-
-    // Add Content-Length header if body is provided
-    if let Some(body) = body {
-        req.insert_header("Content-Length", body.len().to_string())?;
-        req.insert_header("Content-Type", "application/json")?;
     }
 
     // Send the request header
@@ -231,7 +231,9 @@ async fn main() -> Result<()> {
     };
 
     // Define the Peer
-    let mut peer = HttpPeer::new((host, port), is_tls, host.to_string());
+    // Force IPv4 resolution for localhost to avoid IPv6 connection issues
+    let peer_host = if host == "localhost" { "127.0.0.1" } else { host };
+    let mut peer = HttpPeer::new((peer_host, port), is_tls, host.to_string());
     
     // Configure peer to skip certificate verification if insecure flag is set
     if is_tls && args.insecure {
